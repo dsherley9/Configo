@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29920.165
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configo", "Configo\Configo.csproj", "{E7D12582-7938-41F0-8CE2-6B24691D8E9E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E7D12582-7938-41F0-8CE2-6B24691D8E9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7D12582-7938-41F0-8CE2-6B24691D8E9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7D12582-7938-41F0-8CE2-6B24691D8E9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7D12582-7938-41F0-8CE2-6B24691D8E9E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1F72D209-9C80-429E-B676-A97522F62B18}
+	EndGlobalSection
+EndGlobal
