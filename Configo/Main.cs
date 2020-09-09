@@ -125,6 +125,15 @@ namespace Configo
             {
                 configTree.Nodes.Add(node);
             }
+
+            ResetFormInput();
+        }
+
+        private void ResetFormInput()
+        {
+            cmbBoundTo.Text = "";
+            cmbJsonTypes.Text = "";
+            cmbProperty.Text = "";
         }
 
         private void ConfigTree_AfterSelect(object sender, TreeViewEventArgs e)

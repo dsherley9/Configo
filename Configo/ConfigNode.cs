@@ -14,6 +14,7 @@ namespace Configo
         public virtual string Property { get; set; }
         public virtual string PropertyType { get; set; }
         public virtual string Value { get; set; }
+        public virtual object BuildObject { get; set; }
 
         public ConfigNode()
         {
@@ -44,6 +45,6 @@ namespace Configo
             return Constants.ParentJSONTypes.Any(t => t == PropertyType);
         }
 
-        public abstract void AddNodeData(out JToken json);
+        public abstract void AddNodeData<TIn>(TIn key);
     }
 }

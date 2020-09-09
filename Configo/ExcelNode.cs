@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Dynamic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -47,71 +48,6 @@ namespace Configo
         }
         #endregion
 
-        private string BuildJsonItem(DataRow optDataRow = null)
-        {
-            optDataRow = optDataRow != null ? optDataRow : ExcelSheet?.Data?.Rows?[0];
-            var columnIndex = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
-            return $"\"{Property}\": \"{optDataRow[columnIndex]}\"";
-
-            //switch (_propertyType)
-            //{
-            //    case "string":
-            //        return $"\"{Property}\": \"{optDataRow[columnIndex]}\"";
-            //        break;
-            //    case "number":
-            //        return "";
-            //        break;
-            //    case "boolean":
-            //        return "";
-            //        break;
-            //    case "object":
-            //        return "";
-            //        break;
-            //    case "array":
-            //        return "";
-            //        break;
-            //    default:
-            //        return null;
-            //        break;
-            //}
-        }
-
-        private string BuildJsonItems(ExcelNode parent)
-        {
-            JContainer jItems;
-            if (parent.PropertyType == "object")
-            {
-                jItems = new JObject();
-            }
-            else
-            {
-                jItems = new JArray();
-            }
-
-            foreach (DataRow row in ExcelSheet.Data.Rows)
-            {
-                var data = BuildJsonItem(row);
-                jItems.Add(data);
-            }
-
-            return jItems.ToString(Newtonsoft.Json.Formatting.None);
-        }
-
-        public string GetBoundData()
-        {
-            if(Constants.ParentJSONTypes.Any(t => t == PropertyType)) { return null; }
-
-            var parent = (ExcelNode)Parent;
-            return Constants.ParentJSONTypes.Any(t => t == parent?.PropertyType) ?
-                BuildJsonItems(parent) :
-                BuildJsonItem();
-        }
-
-        public override void AddNodeData(out JToken json)
-        { 
-            throw new NotImplementedException();
-        }
-
         private void UpdateText()
         {
             var property = PropertyIsBoundToColumn ? $"{{{_property}}}" : _property;
@@ -121,5 +57,101 @@ namespace Configo
                 Text += $": {{{_boundToColumn}}}";
             }
         }
+
+        private void AddToObject(ExpandoObject parent)
+        {
+            var parentDict = parent as IDictionary<String, Object>;
+            var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
+            var ParentNode = (ConfigNode)Parent;
+            var ParentsParentNode = (ConfigNode)Parent?.Parent;
+            var isListBinding = ParentsParentNode.BuildObject is List<object>;
+            var count = 0;
+
+            foreach (DataRow row in ExcelSheet?.Data.Rows)
+            {
+                if (count == 0)
+                {
+                    parentDict[Property] = row[columnIdx];
+                    if (!isListBinding) { break; } // Not a list, stop here
+                    count++;
+                    continue;
+                }                
+
+                if (ParentNode.PropertyType == "object")
+                {
+                    var parentList = ParentsParentNode.BuildObject as List<object>;
+                    var itemObj = parentList.ElementAtOrDefault(count) as ExpandoObject ?? new ExpandoObject();
+                    var itemDict = itemObj as IDictionary<string, object>;
+                    itemDict[Property] = row[columnIdx];
+                    parentList.Add(itemObj);
+                    count++;
+                    continue;
+                }
+            }
+            return;
+        }
+
+        private void AddToList(List<object> parent)
+        {
+            var parentList = parent as List<object>;
+            foreach (DataRow row in ExcelSheet?.Data.Rows)
+            {
+                var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
+                parentList.Add(row[columnIdx]);
+            }
+            return;
+        }
+
+        private void AddParentType<TIn>(TIn key)
+        {
+            var parentDict = key as IDictionary<String, Object>;
+            var parentList = key as List<object>;
+
+            if (parentDict != null && PropertyType == "array")
+            {
+                BuildObject = new List<object>();
+                parentDict[Property] = BuildObject;
+            }
+
+            if (parentDict != null && PropertyType == "object")
+            {
+                BuildObject = new ExpandoObject() as IDictionary<string, object>;
+                parentDict[Property] = BuildObject;
+            }
+
+            if (parentList != null && PropertyType == "array")
+            {
+                BuildObject = new List<object>();
+                parentList.Add(BuildObject);
+            }
+
+            if (parentList != null && PropertyType == "object")
+            {
+                BuildObject = new ExpandoObject() as IDictionary<string, object>;
+                parentList.Add(BuildObject);
+            }
+        }
+
+        public override void AddNodeData<TIn>(TIn key)
+        {
+            if (Constants.ParentJSONTypes.Any(p => p == PropertyType))
+            {
+                AddParentType(key);
+                return;
+            }
+
+            if (key is ExpandoObject)
+            {
+                AddToObject(key as ExpandoObject);
+            }
+
+            if (key is List<object>)
+            {
+                AddToList(key as List<object>);
+            }
+        }
+
+
+
     }
 }

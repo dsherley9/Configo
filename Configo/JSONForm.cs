@@ -1,9 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Dynamic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,29 +20,56 @@ namespace Configo
         {
             InitializeComponent();
             _parentForm = parentForm;
-            TransformTree();
+            BuildJsonTree();
         }
+
+        private void BuildJsonTree()
+        {
+            var obj = TransformTree();
+            txtJSON.Text = JsonConvert.SerializeObject(obj, Formatting.Indented);
+        }
+
 
         // Used to hit each root node
-        private void TransformTree()
+        private object TransformTree()
         {
             var nodes = _parentForm?.ConfigTree?.Nodes;
-            dynamic json = new JObject();
+            var root = new ExpandoObject() as IDictionary<string, object>;
             foreach (TreeNode n in nodes)
             {
-               TraverseNode(json, n);
+                var configNode = (ConfigNode)n;
+                TraverseNode(root, configNode);
             }
+
+            return root;
         }
 
-        // Used to traverse each node recursively
-        private void TraverseNode(JToken json, TreeNode treeNode)
+        // Used to traverse each root node recursively
+        private void TraverseNode<T>(T parentBuild, ConfigNode configNode)
         {
-            if (treeNode == null) return;
-            var configNode = (ConfigNode)treeNode;
-            configNode.AddNodeData(out json);
-            foreach (TreeNode tn in treeNode.Nodes)
+            if (configNode == null) return;
+            configNode.AddNodeData(parentBuild);
+            foreach (ConfigNode node in configNode.Nodes)
             {
-                TraverseNode(json[configNode.Property], tn);
+                switch (configNode.PropertyType)
+                {
+                    case "object":
+                    case "array":
+                        if (parentBuild is ExpandoObject parentBuildObj)
+                        {
+                            var parentDict = parentBuildObj as IDictionary<string, object>;
+                            TraverseNode(parentDict?[configNode.Property] ?? parentBuildObj, node);
+                        }
+
+                        if (parentBuild is List<object> parentBuildList && parentBuildList.ElementAtOrDefault(0) is ExpandoObject firstElement)
+                        {
+                            TraverseNode(firstElement, node);
+                        }
+                        break;
+                    default:
+                        TraverseNode(parentBuild, node);
+                        break;
+                }
             }
         }
     }
