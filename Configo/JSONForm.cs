@@ -23,6 +23,12 @@ namespace Configo
             BuildJsonTree();
         }
 
+        private void ExpandConfigTree()
+        {
+
+        }
+
+
         private void BuildJsonTree()
         {
             var obj = TransformTree();
@@ -45,31 +51,51 @@ namespace Configo
         }
 
         // Used to traverse each root node recursively
-        private void TraverseNode<T>(T parentBuild, ConfigNode configNode)
+        private void TraverseNode<T>(T parentBuild, ConfigNode configNode, bool isAdditionalParallelNode = false, int parallelIdx = 0, ICollection<object> parrallelParentCollection = null)
         {
             if (configNode == null) return;
-            configNode.AddNodeData(parentBuild);
-            foreach (ConfigNode node in configNode.Nodes)
-            {
-                switch (configNode.PropertyType)
-                {
-                    case "object":
-                    case "array":
-                        if (parentBuild is ExpandoObject parentBuildObj)
-                        {
-                            var parentDict = parentBuildObj as IDictionary<string, object>;
-                            TraverseNode(parentDict?[configNode.Property] ?? parentBuildObj, node);
-                        }
 
-                        if (parentBuild is List<object> parentBuildList && parentBuildList.ElementAtOrDefault(0) is ExpandoObject firstElement)
-                        {
-                            TraverseNode(firstElement, node);
-                        }
-                        break;
-                    default:
-                        TraverseNode(parentBuild, node);
-                        break;
+            configNode.AddNodeData(parentBuild, parallelIdx);
+
+            if (parrallelParentCollection != null)
+            {
+                configNode.AddNodeToCollection(parrallelParentCollection, parallelIdx);
+            }
+
+
+            if (!isAdditionalParallelNode)
+            { // Check for more nodes
+
+                ICollection<object> ppCollection = null;
+                int countOfNodesToAdd = configNode.NodesToAddCount;
+                
+                ConfigNode p = configNode?.Parent as ConfigNode;
+                ConfigNode pp = p?.Parent as ConfigNode;
+
+                if (p?.PropertyType == "object"
+                    && pp?.PropertyType == "array")
+                {
+                    ppCollection = pp.BuildObject as ICollection<object>;
+                    if (ppCollection != null && ppCollection.Count > configNode.NodesToAddCount)
+                    {
+                        countOfNodesToAdd = ppCollection.Count; 
+                        // If the collection is greater than what the node suggests we need to add
+                        // we override with the collection size to make sure each object has the same properties.
+                    }
                 }
+
+                for (int i = 1; i < countOfNodesToAdd; i++)
+                {
+                   var clonedNode = (ConfigNode)configNode.Clone();
+
+                   TraverseNode(parentBuild, clonedNode, true, i, ppCollection);
+                }
+            }
+
+            var childNodes = configNode.Nodes ?? configNode.NodesCloneRef;
+            foreach (ConfigNode node in childNodes)
+            {
+                TraverseNode(configNode.BuildObject, node);
             }
         }
     }

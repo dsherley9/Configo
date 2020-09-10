@@ -46,6 +46,7 @@ namespace Configo
                 UpdateText();
             }
         }
+        public override int NodesToAddCount => GetCountOfBoundItems();
         #endregion
 
         private void UpdateText()
@@ -58,100 +59,88 @@ namespace Configo
             }
         }
 
-        private void AddToObject(ExpandoObject parent)
+        private int GetCountOfBoundItems()
         {
-            var parentDict = parent as IDictionary<String, Object>;
+            if (ExcelSheet?.Data?.Columns == null) { return 1; }
+
+            // If column doesn't exist, it's only 1;
             var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
-            var ParentNode = (ConfigNode)Parent;
-            var ParentsParentNode = (ConfigNode)Parent?.Parent;
-            var isListBinding = ParentsParentNode.BuildObject is List<object>;
-            var count = 0;
+            if (columnIdx < 0) { return 1; }
 
-            foreach (DataRow row in ExcelSheet?.Data.Rows)
-            {
-                if (count == 0)
-                {
-                    parentDict[Property] = row[columnIdx];
-                    if (!isListBinding) { break; } // Not a list, stop here
-                    count++;
-                    continue;
-                }                
-
-                if (ParentNode.PropertyType == "object")
-                {
-                    var parentList = ParentsParentNode.BuildObject as List<object>;
-                    var itemObj = parentList.ElementAtOrDefault(count) as ExpandoObject ?? new ExpandoObject();
-                    var itemDict = itemObj as IDictionary<string, object>;
-                    itemDict[Property] = row[columnIdx];
-                    parentList.Add(itemObj);
-                    count++;
-                    continue;
-                }
-            }
-            return;
+            return ExcelSheet.Data.Rows.Count;
         }
 
-        private void AddToList(List<object> parent)
+        public override object Clone()
         {
-            var parentList = parent as List<object>;
-            foreach (DataRow row in ExcelSheet?.Data.Rows)
-            {
-                var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
-                parentList.Add(row[columnIdx]);
-            }
-            return;
+            var excelNode = (ExcelNode)base.Clone();
+            excelNode.ExcelSheet = ExcelSheet;
+            excelNode.PropertyIsBoundToColumn = PropertyIsBoundToColumn;
+            return excelNode;
         }
 
-        private void AddParentType<TIn>(TIn key)
-        {
-            var parentDict = key as IDictionary<String, Object>;
-            var parentList = key as List<object>;
 
-            if (parentDict != null && PropertyType == "array")
+        private void AddParentType<TIn>(TIn parentBuild)
+        {
+            var parentDict = parentBuild as IDictionary<String, Object>;
+            var parentList = parentBuild as List<object>;
+
+            if (parentDict != null)
             {
-                BuildObject = new List<object>();
+                BuildObject = GetDefaultParentType();
                 parentDict[Property] = BuildObject;
             }
 
-            if (parentDict != null && PropertyType == "object")
+            if (parentList != null)
             {
-                BuildObject = new ExpandoObject() as IDictionary<string, object>;
-                parentDict[Property] = BuildObject;
-            }
-
-            if (parentList != null && PropertyType == "array")
-            {
-                BuildObject = new List<object>();
-                parentList.Add(BuildObject);
-            }
-
-            if (parentList != null && PropertyType == "object")
-            {
-                BuildObject = new ExpandoObject() as IDictionary<string, object>;
+                BuildObject = GetDefaultParentType();
                 parentList.Add(BuildObject);
             }
         }
 
-        public override void AddNodeData<TIn>(TIn key)
+        public override void AddNodeData<T>(T parentBuild, int rowIdx)
         {
             if (Constants.ParentJSONTypes.Any(p => p == PropertyType))
             {
-                AddParentType(key);
+                AddParentType(parentBuild);
                 return;
             }
 
-            if (key is ExpandoObject)
+            if (parentBuild is ICollection<object> collection)
             {
-                AddToObject(key as ExpandoObject);
+                AddNodeToCollection(collection, rowIdx);
+                return;
             }
 
-            if (key is List<object>)
-            {
-                AddToList(key as List<object>);
-            }
+            AddNodeToObject(parentBuild, rowIdx);
         }
 
+        public override void AddNodeToCollection(ICollection<object> list, int rowIdx)
+        {
+            var parentBuild = list as List<object>;
+            var parent = Parent as ConfigNode ?? ParentCloneRef as ConfigNode;
+            if (parent?.PropertyType == "object")
+            {
+                var existingItem = parentBuild.ElementAtOrDefault(rowIdx) as ExpandoObject;
+                var itemObj = existingItem ?? new ExpandoObject();
+                AddNodeToObject(itemObj, rowIdx);
+                if (existingItem == null) { parentBuild.Add(itemObj); }
+                return;
+            }
 
+            var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
+            var value = (columnIdx > -1 && rowIdx > -1) ?
+                ExcelSheet?.Data?.Rows?[rowIdx]?[columnIdx] : null;
 
+            parentBuild.Add(value);        
+        }
+
+        public override void AddNodeToObject(object obj, int rowIdx)
+        {
+            var parentBuild = obj as IDictionary<string, object>;
+            var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
+            var value = (columnIdx > -1 && rowIdx > -1) ?
+                ExcelSheet?.Data?.Rows?[rowIdx]?[columnIdx] : null;
+            parentBuild[Property] = value;
+        }
     }
 }
