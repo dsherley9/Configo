@@ -78,69 +78,23 @@ namespace Configo
             return excelNode;
         }
 
-
-        private void AddParentType<TIn>(TIn parentBuild)
+        public override object AddNodeData(object inputBuildObject, int rowIdx)
         {
-            var parentDict = parentBuild as IDictionary<String, Object>;
-            var parentList = parentBuild as List<object>;
+            // For testing
+            var p = Parent as ConfigNode ?? ParentCloneRef as ConfigNode;
+            var pp = p?.Parent as ConfigNode ?? p.ParentCloneRef as ConfigNode;
+            var pBO = p?.BuildObject as IDictionary<string, object>;
+            var ppBO = pp?.BuildObject as IDictionary<string, object>;
+            var n = ppBO != null && ppBO.ContainsKey("n") ? ppBO?["n"] : null;
 
-            if (parentDict != null)
-            {
-                BuildObject = GetDefaultParentType();
-                parentDict[Property] = BuildObject;
-            }
-
-            if (parentList != null)
-            {
-                BuildObject = GetDefaultParentType();
-                parentList.Add(BuildObject);
-            }
-        }
-
-        public override void AddNodeData<T>(T parentBuild, int rowIdx)
-        {
-            if (Constants.ParentJSONTypes.Any(p => p == PropertyType))
-            {
-                AddParentType(parentBuild);
-                return;
-            }
-
-            if (parentBuild is ICollection<object> collection)
-            {
-                AddNodeToCollection(collection, rowIdx);
-                return;
-            }
-
-            AddNodeToObject(parentBuild, rowIdx);
-        }
-
-        public override void AddNodeToCollection(ICollection<object> list, int rowIdx)
-        {
-            var parentBuild = list as List<object>;
-            var parent = Parent as ConfigNode ?? ParentCloneRef as ConfigNode;
-            if (parent?.PropertyType == "object")
-            {
-                var existingItem = parentBuild.ElementAtOrDefault(rowIdx) as ExpandoObject;
-                var itemObj = existingItem ?? new ExpandoObject();
-                AddNodeToObject(itemObj, rowIdx);
-                if (existingItem == null) { parentBuild.Add(itemObj); }
-                return;
-            }
-
-            var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
-            var value = (columnIdx > -1 && rowIdx > -1) ?
-                ExcelSheet?.Data?.Rows?[rowIdx]?[columnIdx] : null;
-
-            parentBuild.Add(value);        
-        }
-
-        public override void AddNodeToObject(object obj, int rowIdx)
-        {
-            var parentBuild = obj as IDictionary<string, object>;
+            var parentBuild = inputBuildObject as IDictionary<string, object>;
             var columnIdx = ExcelSheet.Data.Columns.IndexOf(_boundToColumn);
             var value = (columnIdx > -1 && rowIdx > -1) ?
                 ExcelSheet?.Data?.Rows?[rowIdx]?[columnIdx] : null;
             parentBuild[Property] = value;
+
+           
+            return value;
         }
     }
 }

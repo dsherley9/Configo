@@ -67,7 +67,25 @@ namespace Configo
             return configNode;
         }
 
-        public virtual object GetDefaultParentType()
+        public virtual object AddParentType(object inputBuildObject)
+        {
+            // var parent = Parent as ConfigNode ?? ParentCloneRef as ConfigNode;
+            BuildObject = CreateParentType();
+
+            if (inputBuildObject is ICollection<object> col)
+            {   
+                col.Add(BuildObject);
+            }
+            else
+            {
+                var expando = inputBuildObject as ExpandoObject as IDictionary<string, object>;
+                expando[Property] = BuildObject;
+            }
+
+            return BuildObject;
+        }
+
+        public virtual object CreateParentType()
         {
             switch (PropertyType)
             {
@@ -76,11 +94,11 @@ namespace Configo
                 case "object":
                     return new ExpandoObject() as IDictionary<string, object>;
                 default:
-                    return null;
+                    throw new Exception("GetParentType - Invalid node, property type is not defined.");
             }
         }
-        public abstract void AddNodeData<T>(T parentBuild, int rowIdx);
-        public abstract void AddNodeToCollection(ICollection<object> list, int rowIdx);
-        public abstract void AddNodeToObject(object obj, int rowIdx);
+        //public abstract void AddNodeData<T>(T parentBuild, int rowIdx);
+        //public abstract void AddNodeToParentCollection(ICollection<object> list, int rowIdx);
+        public abstract object AddNodeData(object obj, int rowIdx);
     }
 }

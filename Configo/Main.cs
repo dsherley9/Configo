@@ -5,9 +5,6 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Configo
@@ -100,8 +97,33 @@ namespace Configo
             InitializeBoundToDropdown();
         }
 
+        private bool ValidInput()
+        {
+            bool validInput = true;
+
+            // Will instead move validation to Node maybe??
+            var selectedNode = configTree?.SelectedNode as ConfigNode;
+
+            if ((selectedNode == null || selectedNode.PropertyType != "array") && string.IsNullOrWhiteSpace(cmbProperty.Text))
+            {
+                // Will eventually do errors in labels and hide labels once valid.... for now though.
+                MessageBox.Show($"JSON object cannot have an empty property value!", "Missing Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                validInput = false;
+            }
+
+            if (string.IsNullOrWhiteSpace(cmbJsonTypes.Text))
+            {
+                MessageBox.Show($"You must select a type!", "Missing Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                validInput = false;
+            }
+
+            return validInput;
+        }
+
         private void BtnAddNode_Click(object sender, EventArgs e)
         {
+            if (!ValidInput()) { return; }
+
             var node = new ExcelNode()
             {
                 PropertyIsBoundToColumn = chkBoundTo.Checked,
@@ -139,8 +161,51 @@ namespace Configo
         private void ConfigTree_AfterSelect(object sender, TreeViewEventArgs e)
         {
             TreeView tree = (TreeView)sender;
-            var node = (ExcelNode)tree.SelectedNode;
-            return;
+            var selectedNode = tree?.SelectedNode;
+            var isNodeSelected = (selectedNode != null);
+            ChangeDeletedNodeButtonState(isNodeSelected);
+            ChangeDeselectNodeButtonState(isNodeSelected);
+            ChangeSelectedNodeLabelState(isNodeSelected, selectedNode);
+        }
+
+        private void ChangeSelectedNodeLabelState(bool isNodeSelected, TreeNode node = null)
+        {
+            if (isNodeSelected)
+            {
+                lblSelectedNode.Text = node?.Text ?? "Error";
+            } 
+            else
+            {
+                lblSelectedNode.Text = "Root";
+            }
+        }
+
+        private void ChangeDeselectNodeButtonState(bool isNodeSelected)
+        {
+            if (isNodeSelected)
+            {
+                btnDeselectNode.Enabled = true;
+            }
+            else
+            {
+                btnDeselectNode.Enabled = false;
+            }
+        }
+
+        private void ChangeDeletedNodeButtonState(bool isNodeSelected)
+        {
+            if (isNodeSelected)
+            {
+                btnDeleteNode.BackColor = Color.Coral;
+                btnDeleteNode.ForeColor = Color.White;
+                btnDeleteNode.Enabled = true;
+            }
+            else
+            {
+                btnDeleteNode.BackColor = default; // SystemColors.Control;
+                btnDeleteNode.ForeColor = default; // SystemColors.ControlText;
+                btnDeleteNode.Enabled = false;
+            }
         }
 
         private void ChangePropertyDropDownState(bool isBoundEnabled)
@@ -179,6 +244,29 @@ namespace Configo
         {
             var jsonForm = new JSONForm(this);
             jsonForm.Show();
+        }
+
+        private void btnDeleteNode_Click(object sender, EventArgs e)
+        {
+            var selectedNode = configTree?.SelectedNode;
+            if (selectedNode == null)
+            {
+                MessageBox.Show("Select a node to delete first! ;)", "Nothing Selected", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                return;
+            }
+            configTree.Nodes.Remove(selectedNode);
+            configTree.SelectedNode = null;
+            ChangeDeletedNodeButtonState(false);
+            ChangeDeselectNodeButtonState(false);
+            ChangeSelectedNodeLabelState(false);
+        }
+
+        private void btnDeselectNode_Click(object sender, EventArgs e)
+        {
+            configTree.SelectedNode = null;
+            ChangeDeletedNodeButtonState(false);
+            ChangeDeselectNodeButtonState(false);
+            ChangeSelectedNodeLabelState(false);
         }
     }
 }

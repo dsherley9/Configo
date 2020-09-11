@@ -43,6 +43,9 @@
             this.lblBoundTo = new System.Windows.Forms.Label();
             this.cmbProperty = new System.Windows.Forms.ComboBox();
             this.chkBoundTo = new System.Windows.Forms.CheckBox();
+            this.btnDeselectNode = new System.Windows.Forms.Button();
+            this.lblSelectNodeTitle = new System.Windows.Forms.Label();
+            this.lblSelectedNode = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dgvData)).BeginInit();
             this.SuspendLayout();
             // 
@@ -84,9 +87,9 @@
             // 
             // configTree
             // 
-            this.configTree.Location = new System.Drawing.Point(685, 152);
+            this.configTree.Location = new System.Drawing.Point(685, 177);
             this.configTree.Name = "configTree";
-            this.configTree.Size = new System.Drawing.Size(589, 448);
+            this.configTree.Size = new System.Drawing.Size(589, 423);
             this.configTree.TabIndex = 8;
             this.configTree.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.ConfigTree_AfterSelect);
             // 
@@ -102,9 +105,9 @@
             // 
             // btnViewJson
             // 
-            this.btnViewJson.Location = new System.Drawing.Point(992, 115);
+            this.btnViewJson.Location = new System.Drawing.Point(685, 606);
             this.btnViewJson.Name = "btnViewJson";
-            this.btnViewJson.Size = new System.Drawing.Size(282, 31);
+            this.btnViewJson.Size = new System.Drawing.Size(589, 39);
             this.btnViewJson.TabIndex = 10;
             this.btnViewJson.Text = "View JSON";
             this.btnViewJson.UseVisualStyleBackColor = true;
@@ -112,12 +115,14 @@
             // 
             // btnDeleteNode
             // 
-            this.btnDeleteNode.Location = new System.Drawing.Point(685, 115);
+            this.btnDeleteNode.Enabled = false;
+            this.btnDeleteNode.Location = new System.Drawing.Point(987, 143);
             this.btnDeleteNode.Name = "btnDeleteNode";
-            this.btnDeleteNode.Size = new System.Drawing.Size(282, 31);
+            this.btnDeleteNode.Size = new System.Drawing.Size(287, 28);
             this.btnDeleteNode.TabIndex = 11;
             this.btnDeleteNode.Text = "Delete Node";
             this.btnDeleteNode.UseVisualStyleBackColor = true;
+            this.btnDeleteNode.Click += new System.EventHandler(this.btnDeleteNode_Click);
             // 
             // cmbJsonTypes
             // 
@@ -183,11 +188,45 @@
             this.chkBoundTo.UseVisualStyleBackColor = true;
             this.chkBoundTo.CheckedChanged += new System.EventHandler(this.ChkBoundTo_CheckedChanged);
             // 
+            // btnDeselectNode
+            // 
+            this.btnDeselectNode.Enabled = false;
+            this.btnDeselectNode.Location = new System.Drawing.Point(685, 143);
+            this.btnDeselectNode.Name = "btnDeselectNode";
+            this.btnDeselectNode.Size = new System.Drawing.Size(287, 28);
+            this.btnDeselectNode.TabIndex = 20;
+            this.btnDeselectNode.Text = "Deselect Node";
+            this.btnDeselectNode.UseVisualStyleBackColor = true;
+            this.btnDeselectNode.Click += new System.EventHandler(this.btnDeselectNode_Click);
+            // 
+            // lblSelectNodeTitle
+            // 
+            this.lblSelectNodeTitle.AutoSize = true;
+            this.lblSelectNodeTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSelectNodeTitle.Location = new System.Drawing.Point(684, 120);
+            this.lblSelectNodeTitle.Name = "lblSelectNodeTitle";
+            this.lblSelectNodeTitle.Size = new System.Drawing.Size(118, 20);
+            this.lblSelectNodeTitle.TabIndex = 21;
+            this.lblSelectNodeTitle.Text = "Selected Node:";
+            // 
+            // lblSelectedNode
+            // 
+            this.lblSelectedNode.AutoSize = true;
+            this.lblSelectedNode.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblSelectedNode.Location = new System.Drawing.Point(808, 120);
+            this.lblSelectedNode.Name = "lblSelectedNode";
+            this.lblSelectedNode.Size = new System.Drawing.Size(44, 20);
+            this.lblSelectedNode.TabIndex = 22;
+            this.lblSelectedNode.Text = "Root";
+            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1323, 616);
+            this.ClientSize = new System.Drawing.Size(1293, 653);
+            this.Controls.Add(this.lblSelectedNode);
+            this.Controls.Add(this.lblSelectNodeTitle);
+            this.Controls.Add(this.btnDeselectNode);
             this.Controls.Add(this.chkBoundTo);
             this.Controls.Add(this.cmbProperty);
             this.Controls.Add(this.lblBoundTo);
@@ -228,5 +267,8 @@
         private System.Windows.Forms.Label lblBoundTo;
         private System.Windows.Forms.ComboBox cmbProperty;
         private System.Windows.Forms.CheckBox chkBoundTo;
+        private System.Windows.Forms.Button btnDeselectNode;
+        private System.Windows.Forms.Label lblSelectNodeTitle;
+        private System.Windows.Forms.Label lblSelectedNode;
     }
 }
