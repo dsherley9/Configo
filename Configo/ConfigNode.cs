@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
@@ -10,21 +11,10 @@ using System.Windows.Forms;
 
 namespace Configo
 {
-    public abstract class ConfigNode : TreeNode
+    public class ConfigNode : TreeNode
     {
 
-
-        // Because I am cloning, I need a way to keep track of the parent;
-        // When you clone, you can't change the parent of the cloned node. 
-        // I'll just keep a ref to the cloned parent
-        public virtual TreeNode ParentCloneRef { get; set; }
-        public virtual TreeNodeCollection NodesCloneRef { get; set; }
-
-        public virtual string Property { get; set; }
-        public virtual string PropertyType { get; set; }
-        public virtual string Value { get; set; }
-        public virtual object BuildObject { get; set; }
-        public virtual int NodesToAddCount { get; } = 1;
+        #region Constructors
 
         public ConfigNode()
         {
@@ -50,55 +40,170 @@ namespace Configo
         {
         }
 
+        #endregion
+
+        #region Fields
+        private string _property;
+        private JSONType _propertyType;
+        private string _value;
+        #endregion
+
+        #region Properties
+        public virtual bool PropertyIsBound { get; set; } = false;
+        public virtual string Property
+        {
+            get => _property;
+            set
+            {
+                _property = value;
+                UpdateText();
+            }
+        }
+        public virtual JSONType PropertyType
+        {
+            get => _propertyType;
+            set
+            {
+                _propertyType = value;
+                UpdateText();
+            }
+        }
+        public virtual string Value
+        {
+            get => _value;
+            set
+            {
+                _value = value;
+                UpdateText();
+            }
+        }
+
+        public ConfigNode Root { get; set; }
+        public bool IsRoot => Root != null;
+        public virtual IDictionary<int, object> BuildObjects { get; set; } = new Dictionary<int, object>();
+        public virtual int NodesToAddCount { get; set; } = 1;
+        public bool IsAParentType => Constants.ParentJSONTypes.Any(t => t == PropertyType);
+        #endregion
+
+        #region Methods
+
+        protected virtual void UpdateText()
+        {
+            var property = PropertyIsBound ? $"{{{_property}}}" : _property;
+            Text = $"[{_propertyType}] {property}";
+            if (!string.IsNullOrWhiteSpace(_value))
+            {
+                Text += $": {{{_value}}}";
+            }
+        }
+
         public virtual bool IsAValidParent()
         {
             return Constants.ParentJSONTypes.Any(t => t == PropertyType);
         }
 
-        public override object Clone()
+        public virtual object CreateParentType()
         {
-            var configNode = (ConfigNode)base.Clone();
-            configNode.Property = Property;
-            configNode.PropertyType = PropertyType;
-            configNode.Value = Value;
-            configNode.BuildObject = null;
-            configNode.ParentCloneRef = Parent;
-            configNode.NodesCloneRef = Nodes;
-            return configNode;
+            if (!IsAParentType)
+            {
+                throw new Exception($"CreateParentType - Unable to create parent type of {PropertyType}.");
+            }
+
+            return ConfigHelper.CreateDefaultJSONType(PropertyType);
         }
 
-        public virtual object AddParentType(object inputBuildObject)
+        public void Build()
         {
-            // var parent = Parent as ConfigNode ?? ParentCloneRef as ConfigNode;
-            BuildObject = CreateParentType();
-
-            if (inputBuildObject is ICollection<object> col)
-            {   
-                col.Add(BuildObject);
+            if (IsAParentType)
+            {
+                AddParentType();
             }
             else
             {
-                var expando = inputBuildObject as ExpandoObject as IDictionary<string, object>;
-                expando[Property] = BuildObject;
+                AddNodeData();
             }
-
-            return BuildObject;
         }
 
-        public virtual object CreateParentType()
+        public virtual void AddParentType()
         {
+            for (int i = 0; i < NodesToAddCount; i++)
+            {
+                AddParentType(i);
+                ConnectToParent(i);
+            }
+        }
+
+        public virtual void AddParentType(int index)
+        {
+            if (BuildObjects.ContainsKey(index)) { return; }
+
+            var parentType = CreateParentType();
+            BuildObjects[index] = parentType;
+        }
+
+        public virtual void AddNodeData()
+        {
+            for (int i = 0; i < NodesToAddCount; i++)
+            {
+                AddNodeData(i);
+                ConnectToParent(i);
+            }
+        }
+
+        public virtual void AddNodeData(int index)
+        {
+            var args = new object[2]
+            {
+                Property,
+                null
+            };
+
             switch (PropertyType)
             {
-                case "array":
-                    return new List<object>();
-                case "object":
-                    return new ExpandoObject() as IDictionary<string, object>;
-                default:
-                    throw new Exception("GetParentType - Invalid node, property type is not defined.");
+                case JSONType.@string:
+                    args[1] = (string)Value;
+                    break;
+                case JSONType.number:
+                    args[1] = int.Parse(Value);
+                    break;
+                case JSONType.boolean:
+                    args[1] = bool.Parse(Value);
+                    break;
+            }
+
+            var obj = ConfigHelper.CreateDefaultJSONType(PropertyType, args);
+            BuildObjects[index] = obj;
+        }
+
+        public virtual void ConnectToParent(int index)
+        {
+            var parent = Parent as ConfigNode ?? Root;
+            parent.AddChildBuildItemReference(index, BuildObjects[index]);
+        }
+
+        public virtual void AddChildBuildItemReference<T>(int index, T o)
+        {
+            if (!IsAParentType) { throw new Exception("AddChildBuildItemReference - Not a parent!"); }
+
+            var buildItem = (PropertyType == JSONType.array) ? BuildObjects?[0] : BuildObjects?[index];
+            if (buildItem == null)
+            {
+                AddParentType(index);
+                buildItem = BuildObjects[index];
+            }
+
+            if (buildItem is ICollection<T> col)
+            {
+                col.Add((T)o);
+            }
+            else if (buildItem is IDictionary<string, object> dict)
+            {
+                var kv = new KeyValuePair<string, object>(((dynamic)o).Key, ((dynamic)o).Value);
+                dict.Add(kv);
             }
         }
-        //public abstract void AddNodeData<T>(T parentBuild, int rowIdx);
-        //public abstract void AddNodeToParentCollection(ICollection<object> list, int rowIdx);
-        public abstract object AddNodeData(object obj, int rowIdx);
+
+        #endregion
+
     }
 }

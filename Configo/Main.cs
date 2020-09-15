@@ -5,7 +5,9 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Configuration;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 
 namespace Configo
 {
@@ -27,17 +29,23 @@ namespace Configo
 
         private void InitializeFormFields()
         {
-            InitializeConfigTypesComboBox();
+            InitializeValueTypesComboBox();
+            InitializeNodeTypesComboBox();
         }
 
-        private void InitializeConfigTypesComboBox()
+        private void InitializeValueTypesComboBox()
         {
-            cmbJsonTypes.DataSource = Constants.JSONTypes;
+            cmbValueType.DataSource = Enum.GetNames(typeof(JSONType)).Where(x => x != JSONType.none.ToString()).ToList();
+        }
+
+        private void InitializeNodeTypesComboBox()
+        {
+            cmbNodeType.DataSource = Enum.GetNames(typeof(NodeType)).Where(x => x != JSONType.none.ToString()).ToList();
         }
 
         private void InitializeBoundToDropdown()
         {
-            cmbBoundTo.DataSource = _activeSheet.Data.Columns.Cast<DataColumn>().Select(x => x.ColumnName).ToList();
+            cmbValue.DataSource = _activeSheet.Data.Columns.Cast<DataColumn>().Select(x => x.ColumnName).ToList();
             ChangePropertyDropDownState(chkBoundTo.Checked);
         }
 
@@ -104,14 +112,14 @@ namespace Configo
             // Will instead move validation to Node maybe??
             var selectedNode = configTree?.SelectedNode as ConfigNode;
 
-            if ((selectedNode == null || selectedNode.PropertyType != "array") && string.IsNullOrWhiteSpace(cmbProperty.Text))
+            if ((selectedNode == null || selectedNode.PropertyType != JSONType.array) && string.IsNullOrWhiteSpace(cmbProperty.Text))
             {
                 // Will eventually do errors in labels and hide labels once valid.... for now though.
                 MessageBox.Show($"JSON object cannot have an empty property value!", "Missing Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 validInput = false;
             }
 
-            if (string.IsNullOrWhiteSpace(cmbJsonTypes.Text))
+            if (string.IsNullOrWhiteSpace(cmbValueType.Text))
             {
                 MessageBox.Show($"You must select a type!", "Missing Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 validInput = false;
@@ -120,17 +128,46 @@ namespace Configo
             return validInput;
         }
 
+
+        private (bool success, string msg) TrySetNodeValues(ConfigNode node)
+        {
+            node.PropertyIsBound = chkBoundTo.Checked;
+            node.Property = cmbProperty.Text;
+            node.PropertyType = (JSONType)Enum.Parse(typeof(JSONType), cmbValueType?.SelectedItem?.ToString());
+            node.Value = cmbValue?.Text?.ToString();
+
+            return (success: true, msg: null);
+        }
+
+        private (bool success, string msg) TrySetNodeValues(ExcelNode node)
+        {
+            node.PropertyIsBound = chkBoundTo.Checked;
+            node.Property = cmbProperty.Text;
+            node.PropertyType = (JSONType)Enum.Parse(typeof(JSONType), cmbValueType?.SelectedItem?.ToString());
+            node.Value = cmbValue?.Text?.ToString();
+            node.ExcelSheet = _activeSheet;
+
+            return (success: false, msg: "You must select a file!");
+        }
+
         private void BtnAddNode_Click(object sender, EventArgs e)
         {
             if (!ValidInput()) { return; }
+            var selectedType = ConfigHelper.GetEnumValueByString<NodeType>(cmbNodeType?.Text);
+            var node = ConfigHelper.CreateNodeType<ConfigNode>(selectedType);
+            dynamic nodeSpecific = Convert.ChangeType(node, node.GetType());
 
-            var node = new ExcelNode()
-            {
-                PropertyIsBoundToColumn = chkBoundTo.Checked,
-                Property = cmbProperty.Text,
-                PropertyType = (string)cmbJsonTypes.SelectedItem,
-                Value = (string)cmbBoundTo.SelectedItem,
-                ExcelSheet = _activeSheet
+            (bool success, string msg) setNodeValues = TrySetNodeValues(nodeSpecific);
+            if (!setNodeValues.success) {
+                if (!string.IsNullOrWhiteSpace(setNodeValues.msg))
+                {
+                    MessageBox.Show(setNodeValues.msg, "Failed! :(", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else
+                {
+                    MessageBox.Show("An error occured while attempting to create node!", "Failed! :(", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return;
             };
 
             var parentNode = configTree.SelectedNode as ConfigNode;
@@ -153,8 +190,8 @@ namespace Configo
 
         private void ResetFormInput()
         {
-            cmbBoundTo.Text = "";
-            cmbJsonTypes.Text = "";
+            cmbValue.Text = "";
+            cmbValueType.Text = "";
             cmbProperty.Text = "";
         }
 
@@ -217,12 +254,12 @@ namespace Configo
         private void ChangeBoundToDropDownState(bool shouldDisplay)
         {
             lblBoundTo.Visible = shouldDisplay;
-            cmbBoundTo.Visible = shouldDisplay;
+            cmbValue.Visible = shouldDisplay;
             
             if (!shouldDisplay)
             {
-                cmbBoundTo.DataSource = null;
-                cmbBoundTo.Text = null;
+                cmbValue.DataSource = null;
+                cmbValue.Text = null;
             }
         }
 
@@ -235,7 +272,7 @@ namespace Configo
         private void CmbJsonTypes_SelectedIndexChanged(object sender, EventArgs e)
         {
             var comboBox = (ComboBox)sender;
-            var selectedType = comboBox.SelectedItem;
+            var selectedType = (JSONType)Enum.Parse(typeof(JSONType), comboBox?.SelectedItem?.ToString());
             var acceptsBindings = Constants.AcceptsValues.Contains(selectedType);
             ChangeBoundToDropDownState(acceptsBindings);
         }

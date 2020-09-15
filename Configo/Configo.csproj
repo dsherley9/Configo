@@ -69,6 +69,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConfigHelper.cs" />
     <Compile Include="ConfigNode.cs" />
     <Compile Include="ExcelNode.cs" />
     <Compile Include="Constants.cs" />
@@ -81,6 +82,7 @@
     <Compile Include="JSONForm.Designer.cs">
       <DependentUpon>JSONForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="JSONType.cs" />
     <Compile Include="Main.cs">
       <SubType>Form</SubType>
     </Compile>
