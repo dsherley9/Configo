@@ -50,5 +50,10 @@ namespace Configo
         {
             return (T)Enum.Parse(typeof(T), value);
         }
+
+        public static bool IsGuid(string value)
+        {
+            return Guid.TryParse(value, out _);
+        }
     }
 }

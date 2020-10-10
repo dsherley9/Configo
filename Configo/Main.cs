@@ -46,7 +46,7 @@ namespace Configo
         private void InitializeBoundToDropdown()
         {
             cmbValue.DataSource = _activeSheet.Data.Columns.Cast<DataColumn>().Select(x => x.ColumnName).ToList();
-            ChangePropertyDropDownState(chkBoundTo.Checked);
+            ChangePropertyDropDownState(chkPropertyBoundTo.Checked);
         }
 
         private void btnChooseFile_Click(object sender, EventArgs e)
@@ -129,10 +129,16 @@ namespace Configo
         }
 
 
+        private string GetNodePropertyText()
+        {
+            return (string.IsNullOrWhiteSpace(cmbProperty?.Text)) ?
+               Guid.NewGuid().ToString() : cmbProperty.Text;
+        }
+
         private (bool success, string msg) TrySetNodeValues(ConfigNode node)
         {
-            node.PropertyIsBound = chkBoundTo.Checked;
-            node.Property = cmbProperty.Text;
+            node.PropertyIsBound = chkPropertyBoundTo.Checked;
+            node.Property = GetNodePropertyText();
             node.PropertyType = (JSONType)Enum.Parse(typeof(JSONType), cmbValueType?.SelectedItem?.ToString());
             node.Value = cmbValue?.Text?.ToString();
 
@@ -141,13 +147,22 @@ namespace Configo
 
         private (bool success, string msg) TrySetNodeValues(ExcelNode node)
         {
-            node.PropertyIsBound = chkBoundTo.Checked;
-            node.Property = cmbProperty.Text;
+            bool success = true;
+            string msg = "";
+            if (_activeSheet == null)
+            {
+                success = false;
+                msg += "You must select a sheet!!";
+                return (success, msg);
+            }
+
+            node.PropertyIsBound = chkPropertyBoundTo.Checked;
+            node.Property = GetNodePropertyText();
             node.PropertyType = (JSONType)Enum.Parse(typeof(JSONType), cmbValueType?.SelectedItem?.ToString());
             node.Value = cmbValue?.Text?.ToString();
             node.ExcelSheet = _activeSheet;
 
-            return (success: false, msg: "You must select a file!");
+            return (success, msg);
         }
 
         private void BtnAddNode_Click(object sender, EventArgs e)

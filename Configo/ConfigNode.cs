@@ -50,6 +50,7 @@ namespace Configo
 
         #region Properties
         public virtual bool PropertyIsBound { get; set; } = false;
+        public virtual bool ValueIsBound { get; set; } = false;
         public virtual string Property
         {
             get => _property;
@@ -89,7 +90,11 @@ namespace Configo
 
         protected virtual void UpdateText()
         {
-            var property = PropertyIsBound ? $"{{{_property}}}" : _property;
+            string property = "";
+            if (!ConfigHelper.IsGuid(Property))
+            {
+                property = PropertyIsBound ? $"{{{_property}}}" : _property;
+            }
             Text = $"[{_propertyType}] {property}";
             if (!string.IsNullOrWhiteSpace(_value))
             {
@@ -138,7 +143,8 @@ namespace Configo
             if (BuildObjects.ContainsKey(index)) { return; }
 
             var parentType = CreateParentType();
-            BuildObjects[index] = parentType;
+            var kv = new KeyValuePair<string, object>(Property, parentType);
+            BuildObjects[index] = kv;
         }
 
         public virtual void AddNodeData()
@@ -178,28 +184,40 @@ namespace Configo
         public virtual void ConnectToParent(int index)
         {
             var parent = Parent as ConfigNode ?? Root;
-            parent.AddChildBuildItemReference(index, BuildObjects[index]);
+            parent.AddChildBuildItemReference(index, this);
         }
 
-        public virtual void AddChildBuildItemReference<T>(int index, T o)
+        public virtual void AddChildBuildItemReference(int index, ConfigNode child)
         {
             if (!IsAParentType) { throw new Exception("AddChildBuildItemReference - Not a parent!"); }
 
-            var buildItem = (PropertyType == JSONType.array) ? BuildObjects?[0] : BuildObjects?[index];
+            var childBuildItem = child?.BuildObjects?[index];
+            if (childBuildItem == null) throw new Exception($"AddChildBuildItemReference - Unable to add a null child build item reference.");
+            if (childBuildItem is KeyValuePair<string, object> ckv) // Doesn't work with value type == string.. need to figure out how to use with generic. Maybe pass the Type via a ref <TInProp, TInValue>
+            {
+                childBuildItem = (PropertyType == JSONType.array) ? ckv.Value : ckv; // Array's don't have properties ;)
+            }
+
+            var buildItem = BuildObjects?[index];
             if (buildItem == null)
             {
                 AddParentType(index);
                 buildItem = BuildObjects[index];
             }
 
-            if (buildItem is ICollection<T> col)
+            if (buildItem is KeyValuePair<string, object> kv)
             {
-                col.Add((T)o);
+                buildItem = kv.Value;
             }
-            else if (buildItem is IDictionary<string, object> dict)
+
+            
+            if (buildItem is IDictionary<string, object> dict)
             {
-                var kv = new KeyValuePair<string, object>(((dynamic)o).Key, ((dynamic)o).Value);
-                dict.Add(kv);
+                var childKeyValue = new KeyValuePair<string, object>(((dynamic)childBuildItem).Key, ((dynamic)childBuildItem).Value);
+                dict.Add(childKeyValue);
+            } else if (buildItem is ICollection<object> col)
+            {
+                col.Add(childBuildItem);            
             }
         }
 
